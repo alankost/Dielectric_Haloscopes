@@ -4,7 +4,7 @@ import scipy.special
 from scipy.signal import convolve
 
 # We need these constants and use MKS units
-# They have been calculate using P=1 ATM, T=273K, and Mmolecule=40 mproton
+# They have been calculated using P=1 ATM, T=273K, and Mmolecule=40 mproton
 e = 1.602e-19 # electronic charge in Coulomb
 m = 9.11e-31 # electronic mass in kg
 eps0 = 8.854e-12 # vacuum permitivity in F/m
