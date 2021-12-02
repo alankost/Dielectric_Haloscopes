@@ -43,7 +43,7 @@ def im_chi(omgea):
     return (f*N0*np.pi*e**2/2/m/eps0/omega0)*gcol(omega)
 # total susceptibility
 def chi(omega):
-    return re_chi(omega)+1j*im_chi(omega)
+    return re_chi(omega)+1j*im_chi(omega)+(nbg**2-1)
 
 # absorption coefficient and refractive index
 def alpha(omega):
@@ -52,10 +52,10 @@ def n(omgea):
     return np.real(nbg*np.sqrt(1+(re_chi(omega)+im_chi(omega)*1j/nbg**2)))
 # absorption coefficient and refractive index from Clausius-Mossoti relation
 def alpha_local(omega):
-    return 2*omega/c*np.imag(np.sqrt((1+2/3*((nbg-1)**2*chi(omega)))/(1-1/3*((nbg-1)**2+chi(omega)))))
+    return 2*omega/c*np.imag(np.sqrt((1+2/3*chi(omega))/(1-1/3*chi(omega))))
 def n_local(omega):
-    return np.real(np.sqrt((1+2/3*((nbg-1)**2*chi(omega)))/(1-1/3*((nbg-1)**2+chi(omega)))))
-omega = np.linspace(omega0-5*gamma_col, omega0+5*gamma_col, 101)
+    return np.real(np.sqrt((1+2/3*chi(omega))/(1-1/3*chi(omega))))
+omega = np.linspace(omega0-50*gamma_col, omega0+50*gamma_col, 1001)
 omega_norm = (omega - omega0)/(gamma_col)
 
 """
