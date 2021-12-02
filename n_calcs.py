@@ -41,20 +41,28 @@ def re_chi(omega):
     return (f*N0*np.pi*e**2/2/m/eps0/omega0)*(omega0-omega)/gamma_col*gcol(omega)
 def im_chi(omgea):
     return (f*N0*np.pi*e**2/2/m/eps0/omega0)*gcol(omega)
+# total susceptibility
+def chi(omega):
+    return re_chi(omega)+1j*im_chi(omega)
 
 # absorption coefficient and refractive index
 def alpha(omega):
     return np.imag((2*omega/c)*nbg*np.sqrt(1+(re_chi(omega)+im_chi(omega)*1j/nbg**2)))
 def n(omgea):
     return np.real(nbg*np.sqrt(1+(re_chi(omega)+im_chi(omega)*1j/nbg**2)))
-
+# absorption coefficient and refractive index from Clausius-Mossoti relation
+def alpha_local(omega):
+    return 2*omega/c*np.imag(np.sqrt((1+2/3*((nbg-1)**2*chi(omega)))/(1-1/3*((nbg-1)**2+chi(omega)))))
+def n_local(omega):
+    return np.real(np.sqrt((1+2/3*((nbg-1)**2*chi(omega)))/(1-1/3*((nbg-1)**2+chi(omega)))))
 omega = np.linspace(omega0-5*gamma_col, omega0+5*gamma_col, 101)
 omega_norm = (omega - omega0)/(gamma_col)
 
+"""
 plt.plot(omega_norm, gcol(omega))
-#plt.plot(omega_norm, convolve(gcol(omega),gDop(omega),'same')*gamma_col/10)
+plt.plot(omega_norm, convolve(gcol(omega),gDop(omega),'same')*gamma_col/10)
 plt.plot(omega_norm,gV(omega))
-# plt.plot(omega_norm,gDop(omega))
+plt.plot(omega_norm,gDop(omega))
 plt.xlabel('omega - omega0 [gamma_col]')
 plt.ylabel('Convolution')
 plt.show()
@@ -64,14 +72,16 @@ plt.plot(omega_norm, im_chi(omega))
 plt.xlabel('omega - omega0 [gamma_col]')
 plt.ylabel('Susecptibility')
 plt.show()
-
+"""
 
 plt.plot(omega_norm,alpha(omega))
+# plt.plot(omega_norm,alpha_local(omega))
 plt.xlabel('Omega - omega0 [gamma_col]')
 plt.ylabel('absorption coefficient (m^-1)')
 plt.show()
 
 plt.plot(omega_norm,n(omega))
+# plt.plot(omega_norm,n_local(omega))
 plt.xlabel('omega - omega0 [gamma_col]')
 plt.ylabel('refractive index')
 plt.show()
