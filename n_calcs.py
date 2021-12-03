@@ -13,7 +13,7 @@ eps0 = 8.854e-12 # vacuum permitivity in F/m
 c = 3.00e8 # speed of light in m/s
 gamma_col = 8.4e9 # collision rate in radians per second
 delta_omega_Dop = 3.52e9 # Doppler "rate" in radians per second
-lambda0 = 1e-3 # vacuum wavelentgh for resonant transision in m
+lambda0 = 1e-6 # vacuum wavelentgh for resonant transision in m
 omega0 = c/lambda0
 N0 = 6.022e23*1e7/22.4 # number density in level 0 at T=273 C and P=1 atm
 f = 0.57 # oscillator strengh - the "reference" value from paper by Axner
@@ -85,6 +85,10 @@ plt.xlabel('Omega - omega0 [gamma_col]')
 plt.ylabel('absorption coefficient (m^-1)')
 plt.show()
 
+plt.plot(omega_norm, np.exp(-alpha(omega)*0.001))
+plt.xlabel('omega - omega0 [gamma_col]')
+plt.ylabel('Transmission for 1mm Thickness')
+plt.show()
 
 plt.plot(omega_norm,n(omega))
 plt.plot(omega_norm,n_local(omega))
