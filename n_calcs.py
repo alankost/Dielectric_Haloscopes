@@ -1,7 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 import scipy.special
 from scipy.signal import convolve
+mpl.rcParams["axes.formatter.useoffset"] = False
 
 # We need these constants and use MKS units
 # They have been calculated using P=1 ATM, T=273K, and Mmolecule=40 mproton
@@ -11,11 +13,11 @@ eps0 = 8.854e-12 # vacuum permitivity in F/m
 c = 3.00e8 # speed of light in m/s
 gamma_col = 8.4e9 # collision rate in radians per second
 delta_omega_Dop = 3.52e9 # Doppler "rate" in radians per second
-lambda0 = 1e-6 # vacuum wavelentgh for resonant transision in m
+lambda0 = 1e-3 # vacuum wavelentgh for resonant transision in m
 omega0 = c/lambda0
-N0 = 6.023e23*1e3/22.4 # number density in level 0 at T=273 C and P=1 atm
-f = 0.057 # oscillator strengh - the "reference" value from paper by Axner
-nbg = 1.001 # background refractive index
+N0 = 6.022e23*1e7/22.4 # number density in level 0 at T=273 C and P=1 atm
+f = 0.57 # oscillator strengh - the "reference" value from paper by Axner
+nbg = 1.00 # background refractive index
 
 
 # Lorentzian broadening line shape function
@@ -38,12 +40,12 @@ def gV(omega):
 
 # real and imaginary parts of the susceptibility
 def re_chi(omega):
-    return (f*N0*np.pi*e**2/2/m/eps0/omega0)*(omega0-omega)/gamma_col*gcol(omega)
+    return (f*N0*np.pi*e**2/2/m/omega0)*(omega0-omega)/gamma_col*gcol(omega)+(nbg**2-1)
 def im_chi(omgea):
-    return (f*N0*np.pi*e**2/2/m/eps0/omega0)*gcol(omega)
+    return (f*N0*np.pi*e**2/2/m/omega0)*gcol(omega)
 # total susceptibility
 def chi(omega):
-    return re_chi(omega)+1j*im_chi(omega)+(nbg**2-1)
+    return re_chi(omega)+1j*im_chi(omega)
 
 # absorption coefficient and refractive index
 def alpha(omega):
@@ -52,9 +54,10 @@ def n(omgea):
     return np.real(nbg*np.sqrt(1+(re_chi(omega)+im_chi(omega)*1j/nbg**2)))
 # absorption coefficient and refractive index from Clausius-Mossoti relation
 def alpha_local(omega):
-    return 2*omega/c*np.imag(np.sqrt((1+2/3*chi(omega))/(1-1/3*chi(omega))))
+    return 2*omega/c*nbg*np.imag(np.sqrt((1+2/3*chi(omega))/(1-1/3*chi(omega))))
 def n_local(omega):
     return np.real(np.sqrt((1+2/3*chi(omega))/(1-1/3*chi(omega))))
+
 omega = np.linspace(omega0-50*gamma_col, omega0+50*gamma_col, 1001)
 omega_norm = (omega - omega0)/(gamma_col)
 
@@ -64,24 +67,27 @@ plt.plot(omega_norm, convolve(gcol(omega),gDop(omega),'same')*gamma_col/10)
 plt.plot(omega_norm,gV(omega))
 plt.plot(omega_norm,gDop(omega))
 plt.xlabel('omega - omega0 [gamma_col]')
-plt.ylabel('Convolution')
-plt.show()
-
-plt.plot(omega_norm, re_chi(omega))
-plt.plot(omega_norm, im_chi(omega))
-plt.xlabel('omega - omega0 [gamma_col]')
-plt.ylabel('Susecptibility')
+plt.ylabel('Line Shape Function')
 plt.show()
 """
 
+plt.plot(omega_norm, re_chi(omega))
+plt.plot(omega_norm, im_chi(omega))
+plt.plot(omega_norm, np.real(chi(omega)))
+plt.plot(omega_norm, np.imag(chi(omega)))
+plt.xlabel('omega - omega0 [gamma_col]')
+plt.ylabel('Susecptibility')
+plt.show()
+
 plt.plot(omega_norm,alpha(omega))
-# plt.plot(omega_norm,alpha_local(omega))
+plt.plot(omega_norm,alpha_local(omega))
 plt.xlabel('Omega - omega0 [gamma_col]')
 plt.ylabel('absorption coefficient (m^-1)')
 plt.show()
 
+
 plt.plot(omega_norm,n(omega))
-# plt.plot(omega_norm,n_local(omega))
+plt.plot(omega_norm,n_local(omega))
 plt.xlabel('omega - omega0 [gamma_col]')
 plt.ylabel('refractive index')
 plt.show()
