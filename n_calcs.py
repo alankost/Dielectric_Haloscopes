@@ -15,7 +15,7 @@ gamma_col = 8.4e9 # collision rate in radians per second
 delta_omega_Dop = 3.52e9 # Doppler "rate" in radians per second
 lambda0 = 1e-6 # vacuum wavelentgh for resonant transision in m
 omega0 = c/lambda0
-N0 = 6.022e23*1e7/22.4 # number density in level 0 at T=273 C and P=1 atm
+N0 = 6.022e23*1e6/22.4 # number density in level 0 at T=273 C and P=1 atm
 f = 0.57 # oscillator strengh - the "reference" value from paper by Axner
 nbg = 1.00 # background refractive index
 
@@ -61,41 +61,46 @@ def n_local(omega):
 omega = np.linspace(omega0-50*gamma_col, omega0+50*gamma_col, 1001)
 omega_norm = (omega - omega0)/(gamma_col)
 
-"""
+
 plt.plot(omega_norm, gcol(omega))
-plt.plot(omega_norm, convolve(gcol(omega),gDop(omega),'same')*gamma_col/10)
+# plt.plot(omega_norm, convolve(gcol(omega),gDop(omega),'same')*gamma_col/10)
 plt.plot(omega_norm,gV(omega))
 plt.plot(omega_norm,gDop(omega))
+plt.xlim(-5, 5)
 plt.xlabel('omega - omega0 [gamma_col]')
 plt.ylabel('Line Shape Function')
 plt.show()
-"""
 
 plt.plot(omega_norm, re_chi(omega))
 plt.plot(omega_norm, im_chi(omega))
 plt.plot(omega_norm, np.real(chi(omega)))
 plt.plot(omega_norm, np.imag(chi(omega)))
+plt.xlim(-20, 20)
 plt.xlabel('omega - omega0 [gamma_col]')
 plt.ylabel('Susecptibility')
 plt.show()
 
 plt.plot(omega_norm,alpha(omega))
 plt.plot(omega_norm,alpha_local(omega))
+plt.xlim(-20, 20)
 plt.xlabel('Omega - omega0 [gamma_col]')
 plt.ylabel('absorption coefficient (m^-1)')
 plt.show()
 
 plt.plot(omega_norm, np.exp(-alpha(omega)*0.001))
+plt.xlim(-20, 20)
 plt.xlabel('omega - omega0 [gamma_col]')
 plt.ylabel('Transmission for 1mm Thickness')
 plt.show()
 
 plt.plot(omega_norm,n(omega))
 plt.plot(omega_norm,n_local(omega))
+plt.xlim(-20, 20)
 plt.xlabel('omega - omega0 [gamma_col]')
 plt.ylabel('refractive index')
 plt.show()
 
+"""
 plt.plot(omega_norm, np.exp(-alpha(omega)*lambda0/n(omega)/2))
 plt.xlabel('omega - omega0 [gamma_col]')
 plt.ylabel('Transmission for Half_wavelength Layer')
@@ -105,3 +110,4 @@ plt.plot (omega_norm, lambda0/n(omega)/2*1e6)
 plt.xlabel('omega - omega0 [gamma_col]')
 plt.ylabel('Half_wave Thickness (micron)')
 plt.show()
+"""
