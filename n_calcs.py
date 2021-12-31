@@ -61,7 +61,6 @@ def n_local(omega):
 omega = np.linspace(omega0-50*gamma_col, omega0+50*gamma_col, 1001)
 omega_norm = (omega - omega0)/(gamma_col)
 
-
 plt.plot(omega_norm, gcol(omega))
 # plt.plot(omega_norm, convolve(gcol(omega),gDop(omega),'same')*gamma_col/10)
 plt.plot(omega_norm,gV(omega))
