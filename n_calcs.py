@@ -38,31 +38,28 @@ def gV(omega):
     z = x + 1j*b
     return 5.90/delta_omega_Dop*np.real(np.exp(-z**2)*scipy.special.erfc(-1j*z))/2/np.pi
 
-# real and imaginary parts of the susceptibility
-def re_chi(omega):
-    return (f*N0*np.pi*e**2/2/m/omega0)*(omega0-omega)/gamma_col*gcol(omega)+(nbg**2-1)
-def im_chi(omgea):
-    return (f*N0*np.pi*e**2/2/m/omega0)*gcol(omega)
-# total susceptibility
+# real and imaginary parts of the molecular polarizability
+def re_gamma(omega):
+    return (f*np.pi*e**2/2/m/omega0)*(omega0-omega)/gamma_col*gcol(omega)+(nbg**2-1)
+def im_gamma(omgea):
+    return (f*np.pi*e**2/2/m/omega0)*gcol(omega)
+# total molecular polarizability
+def gamma(omega):
+    return re_gamma(omega)+1j*im_gamma(omega)
+# susceptibility taking into acount local field effects
 def chi(omega):
-    return re_chi(omega)+1j*im_chi(omega)
+    return N0*gamma(omega)/(1-N0*gamma(omega)/3)
 
 # absorption coefficient and refractive index
 def alpha(omega):
-    return np.imag((2*omega/c)*nbg*np.sqrt(1+(re_chi(omega)+im_chi(omega)*1j/nbg**2)))
+    return 2*omega/c*nbg*np.imag(np.sqrt(nbg+chi(omega)))
 def n(omgea):
-    return np.real(nbg*np.sqrt(1+(re_chi(omega)+im_chi(omega)*1j/nbg**2)))
-# absorption coefficient and refractive index from Clausius-Mossoti relation
-def alpha_local(omega):
-    return 2*omega/c*nbg*np.imag(np.sqrt((1+2/3*chi(omega))/(1-1/3*chi(omega))))
-def n_local(omega):
-    return np.real(np.sqrt((1+2/3*chi(omega))/(1-1/3*chi(omega))))
+    return np.real(np.sqrt(nbg+chi(omega)))
 
 omega = np.linspace(omega0-50*gamma_col, omega0+50*gamma_col, 1001)
 omega_norm = (omega - omega0)/(gamma_col)
 
 plt.plot(omega_norm, gcol(omega))
-# plt.plot(omega_norm, convolve(gcol(omega),gDop(omega),'same')*gamma_col/10)
 plt.plot(omega_norm,gV(omega))
 plt.plot(omega_norm,gDop(omega))
 plt.xlim(-5, 5)
@@ -70,8 +67,6 @@ plt.xlabel('omega - omega0 [gamma_col]')
 plt.ylabel('Line Shape Function')
 plt.show()
 
-plt.plot(omega_norm, re_chi(omega))
-plt.plot(omega_norm, im_chi(omega))
 plt.plot(omega_norm, np.real(chi(omega)))
 plt.plot(omega_norm, np.imag(chi(omega)))
 plt.xlim(-20, 20)
@@ -80,7 +75,6 @@ plt.ylabel('Susecptibility')
 plt.show()
 
 plt.plot(omega_norm,alpha(omega))
-plt.plot(omega_norm,alpha_local(omega))
 plt.xlim(-20, 20)
 plt.xlabel('Omega - omega0 [gamma_col]')
 plt.ylabel('absorption coefficient (m^-1)')
@@ -93,20 +87,7 @@ plt.ylabel('Transmission for 1mm Thickness')
 plt.show()
 
 plt.plot(omega_norm,n(omega))
-plt.plot(omega_norm,n_local(omega))
 plt.xlim(-20, 20)
 plt.xlabel('omega - omega0 [gamma_col]')
 plt.ylabel('refractive index')
 plt.show()
-
-"""
-plt.plot(omega_norm, np.exp(-alpha(omega)*lambda0/n(omega)/2))
-plt.xlabel('omega - omega0 [gamma_col]')
-plt.ylabel('Transmission for Half_wavelength Layer')
-plt.show()
-
-plt.plot (omega_norm, lambda0/n(omega)/2*1e6)
-plt.xlabel('omega - omega0 [gamma_col]')
-plt.ylabel('Half_wave Thickness (micron)')
-plt.show()
-"""
