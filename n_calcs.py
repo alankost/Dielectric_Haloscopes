@@ -1,3 +1,6 @@
+"""
+Upated December 31, 2021 to include molecular polarization and local field
+"""
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
