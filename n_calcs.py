@@ -41,7 +41,7 @@ def wplot(omega):
     b = 1.67*gamma_col/delta_omega_Dop
     z = x + 1j*b
     return np.real(np.exp(-z**2)*scipy.special.erfc(-1j*z))
-# Voigt broadenign line shape function
+# Voigt broadening line shape function
 def gV(omega):
     x = 1.67*(omega - omega0)/delta_omega_Dop
     b = 1.67*gamma_col/delta_omega_Dop
@@ -51,7 +51,7 @@ def gV(omega):
 # real and imaginary parts of the molecular polarizability
 def re_gamma(omega):
     return (f*np.pi*e**2/2/m/omega0/eps0)*(omega0-omega)/gamma_col*gcol(omega)
-def im_gamma(omgea):
+def im_gamma(omega):
     return (f*np.pi*e**2/2/m/omega0/eps0)*gcol(omega)
 # total molecular polarizability
 def gamma(omega):
@@ -67,7 +67,7 @@ def epsilon(omega):
 # absorption coefficient and refractive index
 def alpha(omega):
     return 2*omega/c*nbg*np.imag(np.sqrt(nbg+chi(omega)))
-def n(omgea):
+def n(omega):
     return np.real(np.sqrt(nbg+chi(omega)))
 
 omega = np.linspace(omega0-50*gamma_col, omega0+50*gamma_col, 1001)
@@ -85,7 +85,7 @@ plt.plot(omega_norm, np.real(chi(omega)))
 plt.plot(omega_norm, np.imag(chi(omega)))
 plt.xlim(-20, 20)
 plt.xlabel('omega - omega0 [gamma_col]')
-plt.ylabel('Susecptibility')
+plt.ylabel('Susceptibility')
 plt.show()
 
 plt.plot(omega_norm,alpha(omega))
