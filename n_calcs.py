@@ -1,5 +1,7 @@
 """
 Upated December 31, 2021 to include molecular polarization and local field
+Updated January 1, 2022 removing epsilon0 from calculation of molecular
+polarizability and including it in calculation of chi
 """
 import numpy as np
 import matplotlib.pyplot as plt
@@ -13,13 +15,14 @@ mpl.rcParams["axes.formatter.useoffset"] = False
 e = 1.602e-19 # electronic charge in Coulomb
 m = 9.11e-31 # electronic mass in kg
 eps0 = 8.854e-12 # vacuum permitivity in F/m
+eps0 = 1
 c = 3.00e8 # speed of light in m/s
 gamma_col = 8.4e9 # collision rate in radians per second
 delta_omega_Dop = 3.52e9 # Doppler "rate" in radians per second
-lambda0 = 1e-6 # vacuum wavelentgh for resonant transision in m
+lambda0 = 10e-6 # vacuum wavelentgh for resonant transision in m
 omega0 = c/lambda0
 N0 = 6.022e23*1e6/22.4 # number density in level 0 at T=273 C and P=1 atm
-f = 0.57 # oscillator strengh - the "reference" value from paper by Axner
+f = 1 # oscillator strengh - the "reference" value from paper by Axner
 nbg = 1.00 # background refractive index
 
 
@@ -51,7 +54,11 @@ def gamma(omega):
     return re_gamma(omega)+1j*im_gamma(omega)
 # susceptibility taking into acount local field effects
 def chi(omega):
-    return N0*gamma(omega)/(1-N0*gamma(omega)/3)
+    return N0*gamma(omega)/(1-N0*gamma(omega)/3)/eps0
+
+# relative permitivity (dielectric constant)
+def epsilon(omega):
+    return nbg+chi(omega)
 
 # absorption coefficient and refractive index
 def alpha(omega):
@@ -93,4 +100,11 @@ plt.plot(omega_norm,n(omega))
 plt.xlim(-20, 20)
 plt.xlabel('omega - omega0 [gamma_col]')
 plt.ylabel('refractive index')
+plt.show()
+
+plt.plot(omega_norm,np.real(epsilon(omega)))
+plt.plot(omega_norm,np.imag(epsilon(omega)))
+plt.xlim(-20, 20)
+plt.xlabel('omega - omega0 [gamma_col]')
+plt.ylabel('Relative Permitivity')
 plt.show()
