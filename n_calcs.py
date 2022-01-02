@@ -2,6 +2,10 @@
 Upated December 31, 2021 to include molecular polarization and local field
 Updated January 1, 2022 removing epsilon0 from calculation of molecular
 polarizability and including it in calculation of chi
+Updated January 1, 2022 putting back epison0 in calculation of molecular
+polarizability
+Updated January 1, 2022 adding a thermal occupation factor p0 for the lower
+transition level
 """
 import numpy as np
 import matplotlib.pyplot as plt
@@ -15,14 +19,14 @@ mpl.rcParams["axes.formatter.useoffset"] = False
 e = 1.602e-19 # electronic charge in Coulomb
 m = 9.11e-31 # electronic mass in kg
 eps0 = 8.854e-12 # vacuum permitivity in F/m
-eps0 = 1
 c = 3.00e8 # speed of light in m/s
 gamma_col = 8.4e9 # collision rate in radians per second
 delta_omega_Dop = 3.52e9 # Doppler "rate" in radians per second
 lambda0 = 10e-6 # vacuum wavelentgh for resonant transision in m
 omega0 = c/lambda0
-N0 = 6.022e23*1e6/22.4 # number density in level 0 at T=273 C and P=1 atm
-f = 1 # oscillator strengh - the "reference" value from paper by Axner
+p0=1e-6 # thermal occupation factor
+N0 = p0*6.022e23*1e6/22.4 # number density in level 0 at T=273 C and P=1 atm
+f = 0.057 # oscillator strengh - the "reference" value from paper by Axner
 nbg = 1.00 # background refractive index
 
 
@@ -46,15 +50,15 @@ def gV(omega):
 
 # real and imaginary parts of the molecular polarizability
 def re_gamma(omega):
-    return (f*np.pi*e**2/2/m/omega0)*(omega0-omega)/gamma_col*gcol(omega)+(nbg**2-1)
+    return (f*np.pi*e**2/2/m/omega0/eps0)*(omega0-omega)/gamma_col*gcol(omega)
 def im_gamma(omgea):
-    return (f*np.pi*e**2/2/m/omega0)*gcol(omega)
+    return (f*np.pi*e**2/2/m/omega0/eps0)*gcol(omega)
 # total molecular polarizability
 def gamma(omega):
     return re_gamma(omega)+1j*im_gamma(omega)
 # susceptibility taking into acount local field effects
 def chi(omega):
-    return N0*gamma(omega)/(1-N0*gamma(omega)/3)/eps0
+    return N0*gamma(omega)/(1-N0*gamma(omega)/3)
 
 # relative permitivity (dielectric constant)
 def epsilon(omega):
