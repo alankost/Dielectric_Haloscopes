@@ -7,6 +7,8 @@ polarizability
 Updated January 1, 2022 adding a thermal occupation factor p0 for the lower
 transition level
 """
+import stacks
+
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
@@ -23,8 +25,8 @@ c = 3.00e8 # speed of light in m/s
 gamma_col = 8.4e9 # collision rate in radians per second
 delta_omega_Dop = 3.52e9 # Doppler "rate" in radians per second
 lambda0 = 10e-6 # vacuum wavelentgh for resonant transision in m
-omega0 = c/lambda0
-p0=1e-6 # thermal occupation factor
+omega0 = 2 * np.pi * c/lambda0
+p0 = 1e-6 # thermal occupation factor
 N0 = p0*6.022e23*1e6/22.4 # number density in level 0 at T=273 C and P=1 atm
 f = 0.057 # oscillator strengh - the "reference" value from paper by Axner
 nbg = 1.00 # background refractive index
@@ -72,6 +74,29 @@ def n(omega):
 
 omega = np.linspace(omega0-50*gamma_col, omega0+50*gamma_col, 1001)
 omega_norm = (omega - omega0)/(gamma_col)
+
+print(omega)
+
+omega_norm2 = np.linspace(0, 2, 1000)
+A = [0, 1] * 20 + [0]
+
+boost2 = stacks.hw_boost(omega_norm2, 1, 1.5, n, A)
+plt.plot(omega_norm2, boost2)
+plt.gca().set_yscale('log')
+plt.ylim(1e-1, 1e2)
+plt.xlabel(r'$\omega / \omega_0$')
+plt.ylabel(r'boost factor $|B|$')
+plt.title(r'$n_1 = 1.5$, $n_2 = n(\omega)$')
+plt.show()
+
+boost1 = stacks.hw_boost(omega, omega0, 1.5, n, A)
+plt.plot(omega_norm, boost1)
+plt.gca().set_yscale('log')
+plt.ylim(1e-1, 1e2)
+plt.xlabel(r'$\omega / \omega_0$')
+plt.ylabel(r'boost factor $|B|$')
+plt.title(r'$n_1 = 1.5$, $n_2 = n(\omega)$')
+plt.show()
 
 plt.plot(omega_norm, gcol(omega))
 plt.plot(omega_norm,gV(omega))
