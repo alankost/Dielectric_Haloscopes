@@ -40,61 +40,46 @@ def boost(n, delta, A):
     return np.sqrt(np.abs(BL) ** 2 + np.abs(BR) ** 2)
 
 
-def _hw_boost(omega, omega0, n1, n2, n1_real0, n2_real0, A, n0=None, nm=None):
+def _hw_boost(omega, omega0, n1, n2, n1_real0, n2_real0, A, n0, nm):
     """Does the work for `hw_boost`.
 
     :param omega: angular frequency
     :param omega0: resonant angular frequency of the half-wave stack
-    :param n1: complex refractive index of layer 1, a function of omega
-    :param n2: complex refractive index of layer 2, a function of omega
+    :param n1: complex refractive index of layer 1 (for the given omega)
+    :param n2: complex refractive index of layer 2 (for the given omega)
     :param n1_real0: real refractive index of layer 1 on resonance
     :param n2_real0: real refractive index of layer 2 on resonance
     :param A: (relative) induced electric field in each region, shape (m + 1,)
-    :param n0: complex refractive index of "left" outer (infinite) region, a function of omega
-    :param nm: complex refractive index of "right" outer (infinite) region, a function of omega
+    :param n0: complex refractive index of "left" outer (infinite) region (for the given omega)
+    :param nm: complex refractive index of "right" outer (infinite) region (for the given omega)
     :return: boost factor
     """
     assert len(A) >= 2
 
     num_layers = len(A) - 2         # number of finite-size layers
     num_pairs = num_layers // 2     # number of pairs of half-wave layers
-    n_middle = [n1(omega), n2(omega)] * num_pairs
-    delta = [_hw_delta(n1(omega), n1_real0, omega, omega0),
-             _hw_delta(n2(omega), n2_real0, omega, omega0)] * num_pairs
+    n_middle = [n1, n2] * num_pairs
+    delta = [_hw_delta(n1, n1_real0, omega, omega0),
+             _hw_delta(n2, n2_real0, omega, omega0)] * num_pairs
     if len(A) % 2 != 0:             # odd number of regions
         n_middle.append(n_middle[0])
         delta.append(delta[0])
-    n = [n0(omega)] + n_middle + [nm(omega)]
+    n = [n0] + n_middle + [nm]
     return boost(n, delta, A)
 
 
-def hw_boost(omega, omega0, n1, n2, A, n0=None, nm=None):
+def hw_boost(omega, omega0, n1, n2, A, n0=1, nm=1):
     """Boost factor for a half-wave stack with resonant frequency `omega0`.
 
     :param omega: angular frequency, can be a 1D array
     :param omega0: resonant angular frequency of the half-wave stack
-    :param n1: complex refractive index of layer 1, can be a function of omega
-    :param n2: complex refractive index of layer 2, can be a function of omega
+    :param n1: complex refractive index of layer 1, can be a function of omega or a constant
+    :param n2: complex refractive index of layer 2, can be a function of omega or a constant
     :param A: (relative) induced electric field in each region, shape (m + 1,)
-    :param n0: complex refractive index of "left" outer (infinite) region, can be a function of omega
-    :param nm: complex refractive index of "right" outer (infinite) region, can be a function of omega
+    :param n0: complex refractive index of "left" outer (infinite) region, can be a function of omega or a constant
+    :param nm: complex refractive index of "right" outer (infinite) region, can be a function of omega or a constant
     :return: boost factor
     """
-    if not n0:
-        def n0(omega):
-            return 1  # default n0
-    elif not callable(n0):
-        n0_ = n0
-        def n0(omega):
-            return n0_
-    if not nm:
-        def nm(omega):
-            return 1  # default nm
-    elif not callable(nm):
-        nm_ = nm
-        def nm(omega):
-            return nm_
-
     # turn n's into functions
     if not callable(n1):
         n1_ = n1
@@ -104,15 +89,25 @@ def hw_boost(omega, omega0, n1, n2, A, n0=None, nm=None):
         n2_ = n2
         def n2(omega):
             return n2_
+    if not callable(n0):
+        n0_ = n0
+        def n0(omega):
+            return n0_
+    if not callable(nm):
+        nm_ = nm
+        def nm(omega):
+            return nm_
 
     # real refractive indices on resonance
     n1_real0 = np.real(n1(omega0))
     n2_real0 = np.real(n2(omega0))
 
     try:  # iterable omega
-        result = np.array([_hw_boost(omega_, omega0, n1, n2, n1_real0, n2_real0, A, n0, nm) for omega_ in omega])
+        result = np.array([_hw_boost(
+            omega_, omega0, n1(omega_), n2(omega_), n1_real0, n2_real0, A, n0(omega), nm(omega)
+        ) for omega_ in omega])
     except TypeError:
-        result = _hw_boost(omega, omega0, n1, n2, n1_real0, n2_real0, A, n0, nm)
+        result = _hw_boost(omega, omega0, n1(omega), n2(omega), n1_real0, n2_real0, A, n0(omega), nm(omega))
     return result
 
 
