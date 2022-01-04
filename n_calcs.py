@@ -78,11 +78,12 @@ def complex_n(omega):
 omega = np.linspace(omega0-50*gamma_col, omega0+50*gamma_col, 1001)
 omega_norm = (omega - omega0)/(gamma_col)
 
-omega_norm2 = np.linspace(0, 2, 1000)
-A = [0, 1] * 20 + [0]
+omega_wide = np.linspace(0, 2 * omega0, 1001)
 
-boost2 = stacks.hw_boost(omega_norm2, 1, 1.5, complex_n, A)
-plt.plot(omega_norm2, boost2)
+A = [0, 1] * 20 + [0]  # control stack size
+
+boost2 = stacks.hw_boost(omega_wide, omega0, 1.5, complex_n, A, n2_real0=1)
+plt.plot(omega_wide / omega0, boost2)
 plt.gca().set_yscale('log')
 plt.ylim(1e-1, 1e2)
 plt.xlabel(r'$\omega / \omega_0$')
@@ -90,7 +91,7 @@ plt.ylabel(r'boost factor $|B|$')
 plt.title(r'$n_1 = 1.5$, $n_2 = n(\omega)$')
 plt.show()
 
-boost1 = stacks.hw_boost(omega, omega0, 1.5, complex_n, A)
+boost1 = stacks.hw_boost(omega, omega0, 1.5, complex_n, A, n2_real0=1)
 plt.plot(omega_norm, boost1)
 plt.gca().set_yscale('log')
 plt.ylim(1e-1, 1e2)
@@ -102,21 +103,23 @@ plt.show()
 # test boost factor as a function of refractive index
 ntest = np.linspace(0.7, 1.4, 100)
 boost3 = [stacks._hw_boost(omega0, omega0, 1.5, n_, 1.5, 1, A, 1, 1) for n_ in ntest]
-print(boost3)
 plt.plot(ntest, boost3)
+plt.gca().set_yscale('log')
+plt.ylim(1e-1, 1e2)
 plt.xlabel(r'$n$')
 plt.ylabel(r'boost factor $|B|$')
 plt.title(r'boost factor vs. $n$ (with $n$ real)')
 plt.show()
 
 # test boost factor as a function of absorption coefficient
-ntest = 1 + 1j * np.linspace(0, 1, 2000)
+ntest = 1 + 1j * np.linspace(-2, 2, 2000)
 boost4 = [stacks._hw_boost(omega0, omega0, 1.5, n_, 1.5, 1, A, 1, 1) for n_ in ntest]
 plt.plot(np.imag(ntest), boost4)
+plt.gca().set_yscale('log')
+plt.ylim(1, 200)
 plt.xlabel(r'$Im(n)$')
 plt.ylabel(r'boost factor $|B|$')
 plt.title(r'$|B|$ vs. imaginary part of $n$ (with $Re(n) = 1$)')
-plt.ylim(0, 50)
 plt.show()
 
 plt.plot(omega_norm, gcol(omega))

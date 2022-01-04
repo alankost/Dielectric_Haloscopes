@@ -5,11 +5,13 @@ import numpy as np
 def boost(n, delta, A):
     """General transfer matrix formalism.
     `n`, `delta`, and `A` are arrays, containing values for each region in the stack.
+    Uses the convention that a positive imaginary part of the refractive index corresponds to absorption (same
+    convention that Millar uses).
 
     :param n: refractive index, shape (m + 1,)
     :param delta: (omega n / c) d, shape (m - 1,)
     :param A: (relative) induced electric field, shape (m + 1,)
-    :return: boost factor
+    :return: magnitude of left boost factor
     """
     # convert to arrays
     n = np.asanyarray(n)
@@ -36,8 +38,8 @@ def boost(n, delta, A):
 
     # boost amplitudes
     BL = -(M[1, 0] + M[1, 1]) / T[1, 1]
-    BR = M[0, 0] + M[0, 1] + BL * T[0, 1]
-    return np.sqrt(np.abs(BL) ** 2 + np.abs(BR) ** 2)
+    # BR = M[0, 0] + M[0, 1] + BL * T[0, 1]
+    return np.abs(BL)
 
 
 def _hw_boost(omega, omega0, n1, n2, n1_real0, n2_real0, A, n0, nm):
@@ -47,8 +49,8 @@ def _hw_boost(omega, omega0, n1, n2, n1_real0, n2_real0, A, n0, nm):
     :param omega0: resonant angular frequency of the half-wave stack
     :param n1: complex refractive index of layer 1 (for the given omega)
     :param n2: complex refractive index of layer 2 (for the given omega)
-    :param n1_real0: real refractive index of layer 1 on resonance
-    :param n2_real0: real refractive index of layer 2 on resonance
+    :param n1_real0: real refractive index of layer 1 on resonance (sets width of layer 1)
+    :param n2_real0: real refractive index of layer 2 on resonance (sets width of layer 2)
     :param A: (relative) induced electric field in each region, shape (m + 1,)
     :param n0: complex refractive index of "left" outer (infinite) region (for the given omega)
     :param nm: complex refractive index of "right" outer (infinite) region (for the given omega)
@@ -68,7 +70,7 @@ def _hw_boost(omega, omega0, n1, n2, n1_real0, n2_real0, A, n0, nm):
     return boost(n, delta, A)
 
 
-def hw_boost(omega, omega0, n1, n2, A, n0=1, nm=1):
+def hw_boost(omega, omega0, n1, n2, A, n1_real0=None, n2_real0=None, n0=1, nm=1):
     """Boost factor for a half-wave stack with resonant frequency `omega0`.
 
     :param omega: angular frequency, can be a 1D array
@@ -76,6 +78,8 @@ def hw_boost(omega, omega0, n1, n2, A, n0=1, nm=1):
     :param n1: complex refractive index of layer 1, can be a function of omega or a constant
     :param n2: complex refractive index of layer 2, can be a function of omega or a constant
     :param A: (relative) induced electric field in each region, shape (m + 1,)
+    :param n1_real0: real refractive index of layer 1 on resonance (sets width of layer 1)
+    :param n2_real0: real refractive index of layer 2 on resonance (sets width of layer 2)
     :param n0: complex refractive index of "left" outer (infinite) region, can be a function of omega or a constant
     :param nm: complex refractive index of "right" outer (infinite) region, can be a function of omega or a constant
     :return: boost factor
@@ -98,9 +102,10 @@ def hw_boost(omega, omega0, n1, n2, A, n0=1, nm=1):
         def nm(omega):
             return nm_
 
-    # real refractive indices on resonance
-    n1_real0 = np.real(n1(omega0))
-    n2_real0 = np.real(n2(omega0))
+    if not n1_real0:
+        n1_real0 = np.real(n1(omega0))
+    if not n2_real0:
+        n2_real0 = np.real(n2(omega0))
 
     try:  # iterable omega
         result = np.array([_hw_boost(
@@ -130,10 +135,14 @@ if __name__ == '__main__':
     # delta = [np.pi] * 3
     # b = boost(n, delta, A)
     omega = np.linspace(0, 2, 10000)
-    b = hw_boost(omega, 1, lambda omega: 3, lambda omega: 1, A=A)
-    plt.plot(omega, b)
-    plt.xlabel(r'$\omega / \omega_0$')
-    plt.ylabel(r'boost factor $|B|$')
-    plt.gca().set_yscale('log')
-    plt.ylim(1e-1, 1e2)
-    plt.show()
+
+    # b = hw_boost(omega, 1, lambda omega: 3, lambda omega: 1, A=A)
+    # plt.plot(omega, b)
+    # plt.xlabel(r'$\omega / \omega_0$')
+    # plt.ylabel(r'boost factor $|B|$')
+    # plt.gca().set_yscale('log')
+    # plt.ylim(1e-1, 1e2)
+    # plt.show()
+
+    b = _hw_boost(1, 1, 1.5, 1 + 2.0j, 1.5, 1, A, 1, 1)
+    print(b)
