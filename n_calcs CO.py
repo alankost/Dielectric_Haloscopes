@@ -22,10 +22,10 @@ e = 1.602e-19 # electronic charge in Coulomb
 m = 9.11e-31 # electronic mass in kg
 eps0 = 8.854e-12 # vacuum permitivity in F/m
 c = 3.00e8 # speed of light in m/s
-gamma_col = 0.0618*c*100 # collision rate in radians per second
+gamma_col = 0.0618*c*100*2*np.pi # collision rate in radians per second
 delta_omega_Dop = 10 # Doppler "rate" in radians per second
 # lambda0 = 10e-6 # vacuum wavelentgh for resonant transision in m
-omega0 = 2169.2*c*100
+omega0 = 2169.2*c*100*2*np.pi
 p0 = 1e-6 # thermal occupation factor
 N0 = p0*6.022e23*1e6/22.4 # number density in level 0 at T=273 C and P=1 atm
 f = 0.0138 # oscillator strengh - the "reference" value from paper by Axner
@@ -61,7 +61,7 @@ def gamma(omega):
 # susceptibility taking into acount local field effects
 def chi(omega):
     return N0*gamma(omega)/(1-N0*gamma(omega)/3)
-#    return N0*gamma(omega)
+
 # relative permitivity (dielectric constant)
 def epsilon(omega):
     return nbg+chi(omega)
@@ -154,16 +154,18 @@ plt.ylabel('Transmission for 1mm Thickness')
 plt.show()
 """
 
-plt.plot(omega_norm,n(omega))
+plt.plot(omega_norm,n(omega)-1)
 plt.plot(omega_norm,K(omega))
 plt.xlim(-20, 20)
 plt.xlabel('omega - omega0 [gamma_col]')
 plt.ylabel('refractive index')
 plt.show()
 
+"""
 plt.plot(omega_norm,np.real(epsilon(omega)))
 plt.plot(omega_norm,np.imag(epsilon(omega)))
 plt.xlim(-20, 20)
 plt.xlabel('omega - omega0 [gamma_col]')
 plt.ylabel('Relative Permitivity')
 plt.show()
+"""

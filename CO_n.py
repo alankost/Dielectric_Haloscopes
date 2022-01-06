@@ -19,7 +19,7 @@ Smax_CO = 4.444e-19 # units are cm^-1/(molecule x cm^-2)
 gamma_CO = 0.068 # units are cm*-1
 sigma_max_CO = Smax_CO/np.pi/gamma_CO
 alpha_max_CO = Ntot * sigma_max_CO
-K_max_CO = alpha_max_CO / nu_CO_max
+K_max_CO = alpha_max_CO / (nu_CO_max*2*np.pi)
 print(K_max_CO)
 
 nu = np.linspace(-50*gamma_CO,50*gamma_CO,1000)
