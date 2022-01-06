@@ -6,7 +6,7 @@ import matplotlib as mpl
 # at 2169.2 cm^-1 (4.61 micron)
 
 # Density of ideal gas at 298K in cm*-3
-Ntot = 6.022e23/22.4*1e-6*298/273
+Ntot = 6.022e23/22.4*1e-3*298/273
 
 # Transition energy in inverse cm
 nu_CO_max = 2169.2
