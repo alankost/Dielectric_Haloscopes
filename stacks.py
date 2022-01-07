@@ -64,8 +64,12 @@ def _hw_boost(omega, omega0, n1, n2, n1_real0, n2_real0, A, n0, nm):
     delta = [_hw_delta(n1, n1_real0, omega, omega0),
              _hw_delta(n2, n2_real0, omega, omega0)] * num_pairs
     if len(A) % 2 != 0:             # odd number of regions
-        n_middle.append(n_middle[0])
-        delta.append(delta[0])
+        try:
+            n_middle.append(n_middle[0])
+            delta.append(delta[0])
+        except IndexError:          # empty `n_middle` and `delta`
+            n_middle = [n1]
+            delta = [_hw_delta(n1, n1_real0, omega, omega0)]
     n = [n0] + n_middle + [nm]
     return boost(n, delta, A)
 
