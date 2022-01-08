@@ -42,8 +42,8 @@ def boost(n, delta, A):
     return np.abs(BL)
 
 
-def _hw_boost(omega, omega0, n1, n2, n1_real0, n2_real0, A, n0, nm):
-    """Does the work for `hw_boost`.
+def _hw_boost(omega, omega0, n1, n2, n1_real0, n2_real0, n0, nm, num_layers):
+    """Does the work for `hw_boost`. The induced electric field `A` is calculated automatically by `_A`.
 
     :param omega: angular frequency
     :param omega0: resonant angular frequency of the half-wave stack
@@ -51,37 +51,31 @@ def _hw_boost(omega, omega0, n1, n2, n1_real0, n2_real0, A, n0, nm):
     :param n2: complex refractive index of layer 2 (for the given omega)
     :param n1_real0: real refractive index of layer 1 on resonance (sets width of layer 1)
     :param n2_real0: real refractive index of layer 2 on resonance (sets width of layer 2)
-    :param A: (relative) induced electric field in each region, shape (m + 1,)
     :param n0: complex refractive index of "left" outer (infinite) region (for the given omega)
     :param nm: complex refractive index of "right" outer (infinite) region (for the given omega)
+    :param num_layers: number of (finite) layers in the stack
     :return: boost factor
     """
-    assert len(A) >= 2
+    delta1 = _hw_delta(n1, n1_real0, omega, omega0)
+    delta2 = _hw_delta(n2, n2_real0, omega, omega0)
+    delta = _alternate(delta1, delta2, num_layers)
 
-    num_layers = len(A) - 2         # number of finite-size layers
-    num_pairs = num_layers // 2     # number of pairs of half-wave layers
-    n_middle = [n1, n2] * num_pairs
-    delta = [_hw_delta(n1, n1_real0, omega, omega0),
-             _hw_delta(n2, n2_real0, omega, omega0)] * num_pairs
-    if len(A) % 2 != 0:             # odd number of regions
-        try:
-            n_middle.append(n_middle[0])
-            delta.append(delta[0])
-        except IndexError:          # empty `n_middle` and `delta`
-            n_middle = [n1]
-            delta = [_hw_delta(n1, n1_real0, omega, omega0)]
-    n = [n0] + n_middle + [nm]
+    n_middle = _alternate(n1, n2, num_layers)
+    n = np.array([n0] + n_middle + [nm])
+
+    A = _A(n)
+
     return boost(n, delta, A)
 
 
-def hw_boost(omega, omega0, n1, n2, A, n1_real0=None, n2_real0=None, n0=1, nm=1):
+def hw_boost(omega, omega0, n1, n2, num_layers, n1_real0=None, n2_real0=None, n0=1, nm=1):
     """Boost factor for a half-wave stack with resonant frequency `omega0`.
 
     :param omega: angular frequency, can be a 1D array
     :param omega0: resonant angular frequency of the half-wave stack
     :param n1: complex refractive index of layer 1, can be a function of omega or a constant
     :param n2: complex refractive index of layer 2, can be a function of omega or a constant
-    :param A: (relative) induced electric field in each region, shape (m + 1,)
+    :param num_layers: Number of (finite size) layers in the stack.
     :param n1_real0: real refractive index of layer 1 on resonance (sets width of layer 1)
     :param n2_real0: real refractive index of layer 2 on resonance (sets width of layer 2)
     :param n0: complex refractive index of "left" outer (infinite) region, can be a function of omega or a constant
@@ -113,10 +107,10 @@ def hw_boost(omega, omega0, n1, n2, A, n1_real0=None, n2_real0=None, n0=1, nm=1)
 
     try:  # iterable omega
         result = np.array([_hw_boost(
-            omega_, omega0, n1(omega_), n2(omega_), n1_real0, n2_real0, A, n0(omega), nm(omega)
+            omega_, omega0, n1(omega_), n2(omega_), n1_real0, n2_real0, n0(omega), nm(omega), num_layers
         ) for omega_ in omega])
     except TypeError:
-        result = _hw_boost(omega, omega0, n1(omega), n2(omega), n1_real0, n2_real0, A, n0(omega), nm(omega))
+        result = _hw_boost(omega, omega0, n1(omega), n2(omega), n1_real0, n2_real0, n0(omega), nm(omega), num_layers)
     return result
 
 
@@ -130,6 +124,29 @@ def _hw_delta(n, n_real0, omega, omega0):
     :return: phase change
     """
     return np.pi * omega / omega0 * n / n_real0
+
+
+def _A(n):
+    """Electric field amplitude induced by an oscillating driving interaction in medium with spatially uniform
+    refractive index `n`, relative to the electric field amplitude that would create an equivalent driving 
+    interaction."""
+    return -1 / n ** 2 * _n_to_Ngamma(n)
+
+
+def _n_to_Ngamma(n):
+    """Using the Clausius-Mossotti relation, convert a refractive index `n` into a (dimensionless) polarizability
+    density `Ngamma`."""
+    chi = n ** 2 - 1
+    return 3 * chi / (3 + chi)
+
+
+def _alternate(value1, value2, total_num):
+    """Create a list that alternates between `value1` and `value2`, with `total_num` total entries."""
+    num_pairs = total_num // 2
+    alternating_list = [value1, value2] * num_pairs
+    if total_num % 2 != 0:  # odd
+        alternating_list.append(value1)
+    return alternating_list
 
 
 if __name__ == '__main__':
@@ -147,6 +164,3 @@ if __name__ == '__main__':
     # plt.gca().set_yscale('log')
     # plt.ylim(1e-1, 1e2)
     # plt.show()
-
-    b = _hw_boost(1, 1, 1.5, 1 + 2.0j, 1.5, 1, A, 1, 1)
-    print(b)
