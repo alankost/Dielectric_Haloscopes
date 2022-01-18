@@ -2,23 +2,30 @@
 
 Might take a while to run when the plots are set to a high resolution.
 """
-import numpy as np
-
 import n_calcs
 import stacks
 
+import time
 import numpy as np
 import matplotlib as mpl
 from matplotlib import pyplot as plt
 from matplotlib.colors import LogNorm
 
+start_time = time.time()
+
 plt.style.use('ggplot')
 gg_red = np.array([0.886275, 0.290196, 0.2])
-mpl.rcParams['axes.xmargin'] = 0
+mpl.rcParams.update({'axes.xmargin': 0, 'figure.dpi': 200})
 
-n_glass = 1       # IoR of glass/solid layer
+n_glass = 1.5       # IoR of glass/solid layer
 n_gas0 = 1.001      # IoR of gas layer, off molecular resonance, on half-wave resonance
 num_layers = 201    # stack size
+
+
+def n_imag_func(omega):
+    """Imaginary part of n(omega) from `n_calcs`."""
+    return 1 + 1j * np.imag(n_calcs.complex_n(omega))
+
 
 # plot |BL|^2 vs. omega (wide shot)
 
@@ -104,23 +111,96 @@ plt.xlim(-plt.xlim()[1], plt.xlim()[1])
 plt.tight_layout()
 plt.savefig('jan5/boost-vs-n-imag.png')
 
-# 2D color plot of |B|^2 vs. n_real and n_imag
+# 2D color plot of |B|^2 vs. n_real and n_imag, wide shot
 
-n_real = np.linspace(0.8, 1.2, 500)
-n_imag = np.linspace(0, 0.1, 2000)
+# things shared by the closeup shot
+resolution = 1000
+alpha_box = 0.45
+alpha_arrow1 = 0.6
+alpha_arrow2 = 0.5
+n_line_alpha = 0.5
+n_linewidth = 1.25
+omega_for_n = np.linspace(-60, 60, 10000) * n_calcs.gamma_col + n_calcs.omega0
+n_of_omega = n_calcs.complex_n(omega_for_n)
+
+n_real1 = np.linspace(0.8, 1.2, resolution)
+n_imag1 = np.linspace(0, 0.4, resolution)
 boost_grid = np.array([[stacks.hw_boost(1, 1, n_glass, n_real_ + 1j * n_imag_, num_layers, n2_real0=1)
-                        for n_real_ in n_real] for n_imag_ in n_imag])
+                        for n_real_ in n_real1] for n_imag_ in n_imag1])
 
-plt.figure()
-plt.imshow(boost_grid ** 2,
-           extent=(n_real[0], n_real[-1], n_imag[0], n_imag[-1]), origin='lower', norm=LogNorm(vmin=1e-2))
-cbar = plt.colorbar(location='bottom')
+n_of_omega0 = n_calcs.complex_n(n_calcs.omega0)
+n_of_omega0_xy = np.array([np.real(n_of_omega0), np.imag(n_of_omega0)])
+n_resonance = np.array([1, max(np.imag(n_of_omega))])
+
+fig2, axes2 = plt.subplots()
+imshow = axes2.imshow(boost_grid ** 2, extent=(n_real1[0], n_real1[-1], n_imag1[0], n_imag1[-1]), origin='lower',
+                      norm=LogNorm(vmin=1e-2))
+axes2.plot(np.real(n_of_omega), np.imag(n_of_omega), c='red', alpha=n_line_alpha, label=r'$n(\omega)$', lw=n_linewidth)
+cbar = fig2.colorbar(imshow, location='right')
 cbar.set_label(r'$|\mathrm{B}|^2$')
-plt.xlabel(r'$\mathrm{Re}(n)$')
-plt.ylabel(r'$\mathrm{Im}(n)$')
+axes2.scatter(*n_of_omega0_xy, c='orange', zorder=2)
+axes2.scatter(*n_resonance, c='orange', zorder=2)
+axes2.annotate(r'$\omega_0$', n_of_omega0_xy, xytext=n_of_omega0_xy + (0, -0.04), ha='center', va='center',
+               arrowprops={'facecolor': 'gray', 'alpha': alpha_arrow1, 'width': 3},
+               bbox={'boxstyle': 'round', 'facecolor': 'white', 'alpha': alpha_box})
+axes2.annotate(r'$\omega_\mathrm{res}$', n_resonance, xytext=n_resonance + (0.02, -0.04),
+               ha='center', va='center',
+               arrowprops={'facecolor': 'gray', 'alpha': alpha_arrow1, 'width': 3},
+               bbox={'boxstyle': 'round', 'facecolor': 'white', 'alpha': alpha_box})
+axes2.annotate(r'increasing $\omega$', (0.84, 0.22), xytext=(0.91, 0.29), ha='center', va='center',
+               arrowprops={'facecolor': 'red', 'alpha': alpha_arrow2, 'width': 3, 'connectionstyle': 'arc3,rad=0.3'},
+               bbox={'boxstyle': 'round', 'facecolor': 'white', 'alpha': alpha_box})
+axes2.annotate(r'decreasing $\omega$', (2 - 0.84, 0.22), xytext=(2 - 0.91, 0.29), ha='center', va='center',
+               arrowprops={'facecolor': 'red', 'alpha': alpha_arrow2, 'width': 3, 'connectionstyle': 'arc3,rad=-0.3'},
+               bbox={'boxstyle': 'round', 'facecolor': 'white', 'alpha': alpha_box})
+
+axes2.set_xlabel(r'$\mathrm{Re}(n)$')
+axes2.set_ylabel(r'$\mathrm{Im}(n)$')
 # plt.title(r'$|\mathrm{B}|^2$ vs. $\mathrm{Re}(n)$, $\mathrm{Im}(n)$')
-plt.tight_layout()
-plt.savefig('jan5/2D-boost.png')
+axes2.legend()
+fig2.tight_layout()
+fig2.savefig('jan5/2D-boost-wide.png')
+
+# closeup shot
+
+n_real2 = np.linspace(0.9, 1.1, resolution)
+n_imag2 = np.linspace(0, 0.02, resolution)
+boost_grid2 = np.array([[stacks.hw_boost(1, 1, n_glass, n_real_ + 1j * n_imag_, num_layers, n2_real0=1)
+                         for n_real_ in n_real2] for n_imag_ in n_imag2])
+# omega_for_n2 = np.linspace(-1000, 1000, 10000) * n_calcs.gamma_col + n_calcs.omega0
+n_of_omega2 = n_of_omega
+n_omega_min = np.array([np.real(n_of_omega2[0]), np.imag(n_of_omega2[0])])
+n_omega_max = np.array([np.real(n_of_omega2[-1]), np.imag(n_of_omega2[-1])])
+
+fig3, axes3 = plt.subplots()
+axes3.imshow(boost_grid2 ** 2,
+             extent=(n_real2[0], n_real2[-1], n_imag2[0], n_imag2[-1]), origin='lower', norm=LogNorm(vmin=1e-2))
+axes3.plot(np.real(n_of_omega2), np.imag(n_of_omega2), c='red', alpha=n_line_alpha, label=r'$n(\omega)$',
+           lw=n_linewidth)
+axes3.scatter(np.real(n_of_omega2[[0, -1]]), np.imag(n_of_omega2[[0, -1]]), c='black', zorder=2)
+axes3.annotate(r'$\omega = \omega_0 - 60 \gamma_\mathrm{col}$', n_omega_min, xytext=n_omega_min + (0.0035 * 5/3.2, 0.005),
+               ha='center', va='center',
+               arrowprops={'facecolor': 'gray', 'alpha': alpha_arrow1, 'width': 3},
+               bbox={'boxstyle': 'round', 'facecolor': 'white', 'alpha': alpha_box})
+axes3.annotate(r'$\omega = \omega_0 + 60 \gamma_\mathrm{col}$', n_omega_max, xytext=n_omega_max + (0.0035, 0.0032),
+               ha='center', va='center',
+               arrowprops={'facecolor': 'gray', 'alpha': alpha_arrow1, 'width': 3},
+               bbox={'boxstyle': 'round', 'facecolor': 'white', 'alpha': alpha_box})
+axes3.annotate(r'increasing $\omega$', (0.955, 0.0078), xytext=(0.945, 0.011), ha='center', va='center',
+               arrowprops={'facecolor': 'red', 'alpha': alpha_arrow2, 'width': 3, 'connectionstyle': 'arc3,rad=0.1'},
+               bbox={'boxstyle': 'round', 'facecolor': 'white', 'alpha': alpha_box})
+axes3.annotate(r'decreasing $\omega$', (2 - 0.955, 0.0078), xytext=(2 - 0.945, 0.011), ha='center', va='center',
+               arrowprops={'facecolor': 'red', 'alpha': alpha_arrow2, 'width': 3, 'connectionstyle': 'arc3,rad=-0.1'},
+               bbox={'boxstyle': 'round', 'facecolor': 'white', 'alpha': alpha_box})
+
+axes3.set_xlabel(r'$\mathrm{Re}(n)$')
+axes3.set_ylabel(r'$\mathrm{Im}(n)$')
+axes3.set_xlim(n_real2[[0, -1]])
+axes3.set_ylim(n_imag2[[0, -1]])
+axes3.set_aspect(10)
+axes3.legend(loc='upper right')
+fig3.tight_layout()
+fig3.savefig('jan5/2D-boost-closeup.png')
 
 # plot complex refractive index
 
@@ -136,5 +216,8 @@ plt.xlabel(r'$(\omega - \omega_0) / \gamma_{col}$')
 plt.legend()
 plt.tight_layout()
 plt.savefig('jan5/n-vs-omega.png')
+
+elapsed_time = time.time() - start_time
+print('Done in: {} seconds!'.format(elapsed_time))
 
 plt.show()
