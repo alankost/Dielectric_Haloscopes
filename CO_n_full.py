@@ -60,7 +60,7 @@ plt.xlabel('Energy (eV)')
 plt.ylabel('Imag Part of Refractive Index')
 plt.show()
 
-nreal_CO=nrealCO(omega_range,N0)
+nreal_CO=nrealCO(omega_range,N0_CO)
 plt.plot(E_eV_range,nreal_CO-1)
 plt.xlabel('Energy (eV)')
 plt.ylabel('Real Part of Refractive Index - 1')
