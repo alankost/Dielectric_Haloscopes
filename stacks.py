@@ -30,15 +30,18 @@ def boost(n, delta, A):
     delta_matrix = delta[..., np.newaxis, np.newaxis]           # shape (x, m - 1, 1, 1)
     P = np.exp(1j * delta_matrix) * np.array([[1, 0], [0, 0]]) + np.exp(-1j * delta_matrix) * np.array([[0, 0], [0, 1]])
 
-    Ts = [np.eye(2)]    # "partial" transfer matrices for the setup, T_s^m (in reverse order)
+    Tmm = np.broadcast_to(np.eye(2), n.shape[:-1] + (2, 2))     # shape (x, 2, 2)
+    Ts = [Tmm]  # "partial" transfer matrices for the setup, T_r^m, in reverse order
     for Gr, Pr in zip(np.moveaxis(G, -3, 0)[::-1], np.moveaxis(P, -3, 0)[::-1]):
-        Ts.append(np.linalg.multi_dot((Ts[-1], Gr, Pr)))
-    T = Ts[-1] @ G[0]   # ordinary transfer matrix for entire setup
-    S = np.diff(A) / 2  # radiation "sources" at each interface
-    M = (Ts * S[::-1, np.newaxis, np.newaxis]).sum(axis=0)  # the "M" matrix
+        Ts.append(Ts[-1] @ Gr @ Pr)
+    Ts = np.stack(Ts, axis=-3)                  # shape (x, m, 2, 2)
+    T = Ts[..., -1, :, :] @ G[..., 0, :, :]     # ordinary transfer matrix for entire setup, shape (x, 2, 2)
+    # radiation "sources" at each interface, also in reverse order, shape (x, m, 1, 1)
+    S = np.diff(A, axis=-1)[..., ::-1, np.newaxis, np.newaxis] / 2
+    M = (Ts * S).sum(axis=-3)                   # shape (x, 2, 2)
 
     # boost amplitudes
-    BL = -(M[1, 0] + M[1, 1]) / T[1, 1]
+    BL = -(M[..., 1, 0] + M[..., 1, 1]) / T[..., 1, 1]
     # BR = M[0, 0] + M[0, 1] + BL * T[0, 1]
     return np.abs(BL)
 
@@ -159,12 +162,25 @@ def _test_boost():
     A = [0, 1, 0]
     boosts = [boost(n, delta, A) for delta in deltas]
 
-    correct_boosts = np.array([0, 2 / np.sqrt(5), 1, 2 / np.sqrt(5), 0, 2 / np.sqrt(5), 1])
+    correct_boosts = [0, 2 / np.sqrt(5), 1, 2 / np.sqrt(5), 0, 2 / np.sqrt(5), 1]
+    assert np.allclose(boosts, correct_boosts)
+
+
+def _test_boost_vectorization():
+    n = np.array([[[1, 2, 1]] * 7, [[1, 3, 2]] * 7])
+    deltas = np.array([[0, 0.5, 1, 1.5, 2, 2.5, 3], [0, 0.25, 1, 1.5, 2, 2.75, 3]])[..., np.newaxis] * np.pi
+    A = np.array([[[0, 1, 0]] * 7, [[0, 5, 0]] * 7])
+    boosts = boost(n, deltas, A)
+
+    correct_boosts = np.array([[0, 2 / np.sqrt(5), 1, 2 / np.sqrt(5), 0, 2 / np.sqrt(5), 1],
+                              [0.0, 3.284689647114855, 6.666666666666668, 4.916660830178168, 1.2246467991473535e-15,
+                              5.999415983240223, 6.666666666666668]])
+    assert boosts.shape == correct_boosts.shape
     assert np.allclose(boosts, correct_boosts)
 
 
 if __name__ == '__main__':
-    _test_boost()
+    _test_boost_vectorization()
 
     from matplotlib import pyplot as plt
     A = [0, 1] * 20 + [0]
