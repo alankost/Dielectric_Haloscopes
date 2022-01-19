@@ -1,4 +1,7 @@
-"""Using transfer matrices to describe 1D setups with distributed radiation sources."""
+"""Using transfer matrices to describe 1D setups with distributed radiation sources.
+
+TODO: Double-check that Millar's formalism works for complex refractive indices.
+"""
 import numpy as np
 
 
@@ -8,9 +11,9 @@ def boost(n, delta, A):
     Uses the convention that a positive imaginary part of the refractive index corresponds to absorption (same
     convention that Millar uses).
 
-    :param n: refractive index, shape (m + 1,)
-    :param delta: (omega n / c) d, shape (m - 1,)
-    :param A: (relative) induced electric field, shape (m + 1,)
+    :param n: refractive index, shape (x, m + 1)
+    :param delta: (omega n / c) d, shape (x, m - 1)
+    :param A: (relative) induced electric field, shape (x, m + 1)
     :return: magnitude of left boost factor
     """
     # convert to arrays
@@ -18,19 +21,17 @@ def boost(n, delta, A):
     delta = np.asanyarray(delta)
     A = np.asanyarray(A)
 
-    n_left = n[:-1]
-    n_right = n[1:]
     # transfer matrices for single interfaces
-    G = ((n_right - n_left) * np.ones((2, 2, 1)) + 2 * n_left * np.eye(2)[..., np.newaxis]) / (2 * n_right)
+    n_left = n[..., :-1]
+    n_right = n[..., 1:]
+    n_ratio = (n_left / n_right)[..., np.newaxis, np.newaxis]   # shape (x, m, 1, 1)
+    G = (1 + n_ratio * np.array([[1, -1], [-1, 1]])) / 2        # shape (x, m, 2, 2)
     # transfer matrices for single regions
-    P = np.exp(1j * delta) * np.array([[1, 0], [0, 0]])[..., np.newaxis] \
-        + np.exp(-1j * delta) * np.array([[0, 0], [0, 1]])[..., np.newaxis]
-    # move last dimension to first
-    G = np.moveaxis(G, -1, 0)
-    P = np.moveaxis(P, -1, 0)
+    delta_matrix = delta[..., np.newaxis, np.newaxis]           # shape (x, m - 1, 1, 1)
+    P = np.exp(1j * delta_matrix) * np.array([[1, 0], [0, 0]]) + np.exp(-1j * delta_matrix) * np.array([[0, 0], [0, 1]])
 
-    Ts = [np.eye(2)]    # "partial" transfer matrices for the setup (in reverse order)
-    for Gr, Pr in zip(G[::-1], P[::-1]):
+    Ts = [np.eye(2)]    # "partial" transfer matrices for the setup, T_s^m (in reverse order)
+    for Gr, Pr in zip(np.moveaxis(G, -3, 0)[::-1], np.moveaxis(P, -3, 0)[::-1]):
         Ts.append(np.linalg.multi_dot((Ts[-1], Gr, Pr)))
     T = Ts[-1] @ G[0]   # ordinary transfer matrix for entire setup
     S = np.diff(A) / 2  # radiation "sources" at each interface
@@ -149,7 +150,22 @@ def _alternate(value1, value2, total_num):
     return alternating_list
 
 
+# TESTS
+
+
+def _test_boost():
+    n = [1, 2, 1]
+    deltas = np.array([0, 0.5, 1, 1.5, 2, 2.5, 3])[:, np.newaxis] * np.pi
+    A = [0, 1, 0]
+    boosts = [boost(n, delta, A) for delta in deltas]
+
+    correct_boosts = np.array([0, 2 / np.sqrt(5), 1, 2 / np.sqrt(5), 0, 2 / np.sqrt(5), 1])
+    assert np.allclose(boosts, correct_boosts)
+
+
 if __name__ == '__main__':
+    _test_boost()
+
     from matplotlib import pyplot as plt
     A = [0, 1] * 20 + [0]
     # n = [1, 2, 1, 2, 1]
