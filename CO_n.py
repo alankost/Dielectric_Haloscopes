@@ -36,4 +36,4 @@ plt.plot(nu_norm,n_CO_minus1(nu))
 plt.xlabel(r'$\nu / \nu_0 - \nu_0$')
 plt.ylabel(r'K and n-1')
 plt.title(r'real and imaginary parts of refractive index')
-plt.show
+plt.show()
