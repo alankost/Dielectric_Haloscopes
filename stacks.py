@@ -62,7 +62,7 @@ def _hw_boost(omega, omega0, n1, n2, n1_real0, n2_real0, n0, nm, num_layers):
     """
     delta1 = _hw_delta(n1, n1_real0, omega, omega0)
     delta2 = _hw_delta(n2, n2_real0, omega, omega0)
-    delta = _hw_alternate(delta2, delta1, num_layers)
+    delta = _hw_alternate(delta1, delta2, num_layers)
 
     n = _hw_alternate(n1, n2, num_layers + 2, n0, nm)
     A = _A(n)
@@ -144,22 +144,27 @@ def _n_to_Ngamma(n):
 def _hw_alternate(value1, value2, total_num, value0=None, valuem=None):
     """Create an array that alternates like a half-wave stack.
 
-    Entries along the last axis will alternate between `value1` and `value2`, with `value1` for the odd indices. If
-    `value0` or `valuem` are given, they will override the first and last entries, respectively.
+    If `value0` or `valuem` are given, these will be the first and last entries in the array. The rest of the entries
+    will alternate between `value1` and `value2`, starting with `value1`.
 
     (Mostly) optimized for speed.
 
-    `value1`, `value2`, `value0`, and `valuem` can have shape (x,), and the output will have shape (x, `total_num`).
+    `value1`, `value2`, `value0`, and `valuem` can all have shape (x,), in which case the output will have shape
+    (x, `total_num`).
     """
     value_shape = np.broadcast(value1, value2, value0, valuem).shape
     alternating_list = np.empty((total_num,) + value_shape, np.complex128)  # shape (`total_num`, x)
-    alternating_list[1::2] = value1
-    alternating_list[::2] = value2
+
+    if value0 is not None:
+        value1, value2 = value2, value1
+    alternating_list[::2] = value1
+    alternating_list[1::2] = value2
     if valuem is not None:
         alternating_list[-1] = valuem
     if value0 is not None:
         alternating_list[0] = value0
-    alternating_list = np.moveaxis(alternating_list, 0, -1)  # shape (x, `total_num`)
+
+    alternating_list = np.moveaxis(alternating_list, 0, -1)                 # shape (x, `total_num`)
     return alternating_list
 
 
@@ -201,7 +206,7 @@ def _test_hw_alternate():
     total_num3 = 4
     alternating_list1 = _hw_alternate(value1, value2, total_num1, value0, valuem)
     alternating_list2 = _hw_alternate(value1, value2, total_num2, value0, valuem)
-    alternating_list3 = _hw_alternate(value2, value1, total_num3)
+    alternating_list3 = _hw_alternate(value1, value2, total_num3)
 
     correct_list1 = np.array([[[0, -1, -1000, -1, -1000, -1, 1000],
                                [1, -1, -999, -1, -999, -1, 1001],
@@ -223,19 +228,20 @@ def _test_hw_alternate():
 def _time_hw_alternate():
     from timeit import repeat
     setup = '''
-    from __main__ import np, _hw_alternate, _hw_alternate2
-    value0 = np.arange(10000).reshape(10, 1000)
-    value1 = np.ones(1000)
-    value2 = np.zeros((10, 1))
-    valuem = np.arange(10000).reshape(10, 1000)
-    total_num = 1000'''
-    time = repeat('_hw_alternate(value0, value1, value2, valuem, total_num)', setup=setup, number=10)
+from __main__ import np, _hw_alternate
+value0 = np.arange(10000).reshape(10, 1000)
+value1 = np.ones(1000)
+value2 = np.zeros((10, 1))
+valuem = np.arange(10000).reshape(10, 1000)
+total_num = 1000'''
+    time = repeat('_hw_alternate(value1, value2, total_num, value0, valuem)', setup=setup, number=10)
     print(time)
 
 
 if __name__ == '__main__':
     _test_boost_with_vectorization()
     _test_hw_alternate()
+    _time_hw_alternate()
 
     # from matplotlib import pyplot as plt
     # A = [0, 1] * 20 + [0]
