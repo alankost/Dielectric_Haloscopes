@@ -144,12 +144,23 @@ def _n_to_Ngamma(n):
     return 3 * chi / (3 + chi)
 
 
-def _alternate(value1, value2, total_num):
-    """Create a list that alternates between `value1` and `value2`, with `total_num` total entries."""
-    num_pairs = total_num // 2
-    alternating_list = [value1, value2] * num_pairs
-    if total_num % 2 != 0:  # odd
-        alternating_list.append(value1)
+def _hw_alternate(value1, value2, value0, valuem, total_num):
+    """Create an array that alternates like a half-wave stack.
+
+    The first entry will contain `value0` and the last entry will contain `valuem`. The entries in between (if they
+    exist) will alternate between `value1` and `value2`, starting with `value1`.
+
+    (Mostly) optimized for speed.
+
+    `value1`, `value2`, `value0`, and `valuem` can have shape (x,), and the output will have shape (x, `total_num`).
+    """
+    value_shape = np.broadcast(value1, value2, value0, valuem).shape
+    alternating_list = np.empty((total_num,) + value_shape)  # shape (`total_num`, x)
+    alternating_list[1::2] = value1
+    alternating_list[::2] = value2
+    alternating_list[-1] = valuem
+    alternating_list[0] = value0
+    alternating_list = np.moveaxis(alternating_list, 0, -1)  # shape (x, `total_num`)
     return alternating_list
 
 
@@ -179,8 +190,32 @@ def _test_boost_vectorization():
     assert np.allclose(boosts, correct_boosts)
 
 
+def _test_hw_alternate():
+    value0 = np.arange(6).reshape(2, 3)
+    valuem = np.arange(3) + 1000
+    value1 = -1
+    value2 = np.arange(6).reshape(2, 3) - 1000
+    total_num1 = 7
+    total_num2 = 2
+    alternating_list1 = _hw_alternate(value1, value2, value0, valuem, total_num1)
+    alternating_list2 = _hw_alternate(value1, value2, value0, valuem, total_num2)
+
+    correct_list1 = np.array([[[0, -1, -1000, -1, -1000, -1, 1000],
+                               [1, -1, -999, -1, -999, -1, 1001],
+                               [2, -1, -998, -1, -998, -1, 1002]],
+                              [[3, -1, -997, -1, -997, -1, 1000],
+                               [4, -1, -996, -1, -996, -1, 1001],
+                               [5, -1, -995, -1, -995, -1, 1002]]])
+    correct_list2 = np.array([[[0, 1000], [1, 1001], [2, 1002]], [[3, 1000], [4, 1001], [5, 1002]]])
+    assert alternating_list1.shape == correct_list1.shape
+    assert alternating_list2.shape == correct_list2.shape
+    assert np.allclose(alternating_list1, correct_list1)
+    assert np.allclose(alternating_list2, correct_list2)
+
+
 if __name__ == '__main__':
     _test_boost_vectorization()
+    _test_hw_alternate()
 
     from matplotlib import pyplot as plt
     A = [0, 1] * 20 + [0]
