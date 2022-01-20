@@ -62,13 +62,10 @@ def _hw_boost(omega, omega0, n1, n2, n1_real0, n2_real0, n0, nm, num_layers):
     """
     delta1 = _hw_delta(n1, n1_real0, omega, omega0)
     delta2 = _hw_delta(n2, n2_real0, omega, omega0)
-    delta = _alternate(delta1, delta2, num_layers)
+    delta = _hw_alternate(delta2, delta1, num_layers)
 
-    n_middle = _alternate(n1, n2, num_layers)
-    n = np.array([n0] + n_middle + [nm])
-
+    n = _hw_alternate(n1, n2, num_layers + 2, n0, nm)
     A = _A(n)
-
     return boost(n, delta, A)
 
 
@@ -144,22 +141,24 @@ def _n_to_Ngamma(n):
     return 3 * chi / (3 + chi)
 
 
-def _hw_alternate(value1, value2, value0, valuem, total_num):
+def _hw_alternate(value1, value2, total_num, value0=None, valuem=None):
     """Create an array that alternates like a half-wave stack.
 
-    The first entry will contain `value0` and the last entry will contain `valuem`. The entries in between (if they
-    exist) will alternate between `value1` and `value2`, starting with `value1`.
+    Entries along the last axis will alternate between `value1` and `value2`, with `value1` for the odd indices. If
+    `value0` or `valuem` are given, they will override the first and last entries, respectively.
 
     (Mostly) optimized for speed.
 
     `value1`, `value2`, `value0`, and `valuem` can have shape (x,), and the output will have shape (x, `total_num`).
     """
     value_shape = np.broadcast(value1, value2, value0, valuem).shape
-    alternating_list = np.empty((total_num,) + value_shape)  # shape (`total_num`, x)
+    alternating_list = np.empty((total_num,) + value_shape, np.complex128)  # shape (`total_num`, x)
     alternating_list[1::2] = value1
     alternating_list[::2] = value2
-    alternating_list[-1] = valuem
-    alternating_list[0] = value0
+    if valuem is not None:
+        alternating_list[-1] = valuem
+    if value0 is not None:
+        alternating_list[0] = value0
     alternating_list = np.moveaxis(alternating_list, 0, -1)  # shape (x, `total_num`)
     return alternating_list
 
@@ -168,6 +167,7 @@ def _hw_alternate(value1, value2, value0, valuem, total_num):
 
 
 def _test_boost():
+    # TODO: Include complex numbers in this test.
     n = [1, 2, 1]
     deltas = np.array([0, 0.5, 1, 1.5, 2, 2.5, 3])[:, np.newaxis] * np.pi
     A = [0, 1, 0]
@@ -177,7 +177,8 @@ def _test_boost():
     assert np.allclose(boosts, correct_boosts)
 
 
-def _test_boost_vectorization():
+def _test_boost_with_vectorization():
+    # TODO: Include complex numbers in this test.
     n = np.array([[[1, 2, 1]] * 7, [[1, 3, 2]] * 7])
     deltas = np.array([[0, 0.5, 1, 1.5, 2, 2.5, 3], [0, 0.25, 1, 1.5, 2, 2.75, 3]])[..., np.newaxis] * np.pi
     A = np.array([[[0, 1, 0]] * 7, [[0, 5, 0]] * 7])
@@ -197,8 +198,10 @@ def _test_hw_alternate():
     value2 = np.arange(6).reshape(2, 3) - 1000
     total_num1 = 7
     total_num2 = 2
-    alternating_list1 = _hw_alternate(value1, value2, value0, valuem, total_num1)
-    alternating_list2 = _hw_alternate(value1, value2, value0, valuem, total_num2)
+    total_num3 = 4
+    alternating_list1 = _hw_alternate(value1, value2, total_num1, value0, valuem)
+    alternating_list2 = _hw_alternate(value1, value2, total_num2, value0, valuem)
+    alternating_list3 = _hw_alternate(value2, value1, total_num3)
 
     correct_list1 = np.array([[[0, -1, -1000, -1, -1000, -1, 1000],
                                [1, -1, -999, -1, -999, -1, 1001],
@@ -207,22 +210,39 @@ def _test_hw_alternate():
                                [4, -1, -996, -1, -996, -1, 1001],
                                [5, -1, -995, -1, -995, -1, 1002]]])
     correct_list2 = np.array([[[0, 1000], [1, 1001], [2, 1002]], [[3, 1000], [4, 1001], [5, 1002]]])
+    correct_list3 = np.array([[[-1, -1000, -1, -1000], [-1, -999, -1, -999], [-1, -998, -1, -998]],
+                              [[-1, -997, -1, -997], [-1, -996, -1, -996], [-1, -995, -1, -995]]])
     assert alternating_list1.shape == correct_list1.shape
     assert alternating_list2.shape == correct_list2.shape
+    assert alternating_list3.shape == correct_list3.shape
     assert np.allclose(alternating_list1, correct_list1)
     assert np.allclose(alternating_list2, correct_list2)
+    assert np.allclose(alternating_list3, correct_list3)
+
+
+def _time_hw_alternate():
+    from timeit import repeat
+    setup = '''
+    from __main__ import np, _hw_alternate, _hw_alternate2
+    value0 = np.arange(10000).reshape(10, 1000)
+    value1 = np.ones(1000)
+    value2 = np.zeros((10, 1))
+    valuem = np.arange(10000).reshape(10, 1000)
+    total_num = 1000'''
+    time = repeat('_hw_alternate(value0, value1, value2, valuem, total_num)', setup=setup, number=10)
+    print(time)
 
 
 if __name__ == '__main__':
-    _test_boost_vectorization()
+    _test_boost_with_vectorization()
     _test_hw_alternate()
 
-    from matplotlib import pyplot as plt
-    A = [0, 1] * 20 + [0]
+    # from matplotlib import pyplot as plt
+    # A = [0, 1] * 20 + [0]
     # n = [1, 2, 1, 2, 1]
     # delta = [np.pi] * 3
     # b = boost(n, delta, A)
-    omega = np.linspace(0, 2, 10000)
+    # omega = np.linspace(0, 2, 10000)
 
     # b = hw_boost(omega, 1, lambda omega: 3, lambda omega: 1, A=A)
     # plt.plot(omega, b)
