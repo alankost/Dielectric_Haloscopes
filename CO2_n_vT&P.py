@@ -1,7 +1,6 @@
 import numpy as np
 from numpy import genfromtxt
 import matplotlib.pyplot as plt 
-import pandas as pd
 
 # load Hitran data from a file for the C12-O16
 # isotope of CO which is 98.6544 % of total
