@@ -11,8 +11,6 @@ import matplotlib as mpl
 from matplotlib import pyplot as plt
 from matplotlib.colors import LogNorm
 
-start_time = time.time()
-
 plt.style.use('ggplot')
 gg_red = np.array([0.886275, 0.290196, 0.2])
 mpl.rcParams.update({'axes.xmargin': 0, 'figure.dpi': 200})
@@ -20,6 +18,8 @@ mpl.rcParams.update({'axes.xmargin': 0, 'figure.dpi': 200})
 n_glass = 1.5       # IoR of glass/solid layer
 n_gas0 = 1.001      # IoR of gas layer, off molecular resonance, on half-wave resonance
 num_layers = 201    # stack size
+
+start_time = time.perf_counter()
 
 
 def n_imag_func(omega):
@@ -64,9 +64,8 @@ plt.savefig('jan5/boost-vs-omega.png')
 # plot (magnitude of left) boost factor squared vs. Re(n)
 
 n_real2 = np.linspace(0.8, 1.2, 5001)
-n_imags = [0, 0.005, 0.02]
-boosts = [np.array([stacks.hw_boost(1, 1, n_glass, n_ + 1j * n_imag_, num_layers, n2_real0=n_gas0) for n_ in n_real2])
-          for n_imag_ in n_imags]
+n_imags = np.array([0, 0.005, 0.02])[:, np.newaxis]
+boosts = stacks.hw_boost(1, 1, n_glass, n_real2 + 1j * n_imags, num_layers, n2_real0=n_gas0)
 
 plt.figure(figsize=(6.4, 3.6))
 colors = [gg_red * scale for scale in (1, 0.6, 0.3)]
@@ -87,10 +86,8 @@ plt.savefig('jan5/boost-vs-n-real.png')
 
 n_imag_negative = np.linspace(-0.4, 0, 2001)
 n_imag_positive = np.linspace(0.4, 0, 1001)
-boost4_negative = np.array([stacks.hw_boost(1, 1, n_glass, 1 + 1j * n_, num_layers, n2_real0=n_gas0)
-                            for n_ in n_imag_negative])
-boost4_positive = np.array([stacks.hw_boost(1, 1, n_glass, 1 + 1j * n_, num_layers, n2_real0=n_gas0)
-                            for n_ in n_imag_positive])
+boost4_negative = stacks.hw_boost(1, 1, n_glass, 1 + 1j * n_imag_negative, num_layers, n2_real0=n_gas0)
+boost4_positive = stacks.hw_boost(1, 1, n_glass, 1 + 1j * n_imag_positive, num_layers, n2_real0=n_gas0)
 
 plt.figure(figsize=(6.4, 3.6))
 plt.plot(n_imag_positive, boost4_positive ** 2)
@@ -125,8 +122,8 @@ n_of_omega = n_calcs.complex_n(omega_for_n)
 
 n_real1 = np.linspace(0.8, 1.2, resolution)
 n_imag1 = np.linspace(0, 0.4, resolution)
-boost_grid = np.array([[stacks.hw_boost(1, 1, n_glass, n_real_ + 1j * n_imag_, num_layers, n2_real0=1)
-                        for n_real_ in n_real1] for n_imag_ in n_imag1])
+boost_grid = np.vstack([stacks.hw_boost(1, 1, n_glass, n_real1 + 1j * n_imag_, num_layers, n2_real0=n_gas0)
+                        for n_imag_ in np.array_split(n_imag1[:, np.newaxis], 100)])
 
 n_of_omega0 = n_calcs.complex_n(n_calcs.omega0)
 n_of_omega0_xy = np.array([np.real(n_of_omega0), np.imag(n_of_omega0)])
@@ -165,8 +162,8 @@ fig2.savefig('jan5/2D-boost-wide.png')
 
 n_real2 = np.linspace(0.9, 1.1, resolution)
 n_imag2 = np.linspace(0, 0.02, resolution)
-boost_grid2 = np.array([[stacks.hw_boost(1, 1, n_glass, n_real_ + 1j * n_imag_, num_layers, n2_real0=1)
-                         for n_real_ in n_real2] for n_imag_ in n_imag2])
+boost_grid2 = np.vstack([stacks.hw_boost(1, 1, n_glass, n_real2 + 1j * n_imag_, num_layers, n2_real0=n_gas0)
+                         for n_imag_ in np.array_split(n_imag2[:, np.newaxis], 100)])
 # omega_for_n2 = np.linspace(-1000, 1000, 10000) * n_calcs.gamma_col + n_calcs.omega0
 n_of_omega2 = n_of_omega
 n_omega_min = np.array([np.real(n_of_omega2[0]), np.imag(n_of_omega2[0])])
@@ -217,7 +214,7 @@ plt.legend()
 plt.tight_layout()
 plt.savefig('jan5/n-vs-omega.png')
 
-elapsed_time = time.time() - start_time
+elapsed_time = time.perf_counter() - start_time
 print('Done in: {} seconds!'.format(elapsed_time))
 
 plt.show()
