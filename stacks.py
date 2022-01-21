@@ -11,6 +11,8 @@ def boost(n, delta, A):
     Uses the convention that a positive imaginary part of the refractive index corresponds to absorption (same
     convention that Millar uses).
 
+    In the shapes below, "x" stands for a common arbitrary shape, or a similar broadcastable shape.
+
     :param n: refractive index, shape (x, m + 1)
     :param delta: (omega n / c) d, shape (x, m - 1)
     :param A: (relative) induced electric field, shape (x, m + 1)
@@ -30,7 +32,8 @@ def boost(n, delta, A):
     delta_matrix = delta[..., np.newaxis, np.newaxis]           # shape (x, m - 1, 1, 1)
     P = np.exp(1j * delta_matrix) * np.array([[1, 0], [0, 0]]) + np.exp(-1j * delta_matrix) * np.array([[0, 0], [0, 1]])
 
-    Tmm = np.broadcast_to(np.eye(2), n.shape[:-1] + (2, 2))     # shape (x, 2, 2)
+    Tmm_x_shape = np.broadcast(n[..., 0], delta[..., 0]).shape
+    Tmm = np.broadcast_to(np.eye(2), Tmm_x_shape + (2, 2))      # shape (x, 2, 2)
     Ts = [Tmm]  # "partial" transfer matrices for the setup, T_r^m, in reverse order
     for Gr, Pr in zip(np.moveaxis(G, -3, 0)[::-1], np.moveaxis(P, -3, 0)[::-1]):
         Ts.append(Ts[-1] @ Gr @ Pr)
@@ -46,73 +49,65 @@ def boost(n, delta, A):
     return np.abs(BL)
 
 
-def _hw_boost(omega, omega0, n1, n2, n1_real0, n2_real0, n0, nm, num_layers):
-    """Does the work for `hw_boost`. The induced electric field `A` is calculated automatically by `_A`.
+def hw_boost(omega, omega0, n1, n2, num_layers, n1_real0=None, n2_real0=None, n0=1, nm=1):
+    """Boost factor for a half-wave stack with resonant frequency `omega0`. The induced electric field `A` is calculated
+    automatically by the `_A` function.
+
+    `omega`, `omega0`, `n1`, `n2`, `n1_real0`, `n2_real0`, `n0`, and `nm` can all be broadcastable to a common shape
+    (x,), which will be the shape of the output. Alternatively, `n1`, `n2`, `n0`, and/or `nm` can be functions of
+    `omega`. Finally, each n_real0 defaults to Re(n(omega)) or Re(n).
+
+    A positive imaginary part of a refractive index corresponds to absorption.
 
     :param omega: angular frequency
     :param omega0: resonant angular frequency of the half-wave stack
     :param n1: complex refractive index of layer 1 (for the given omega)
     :param n2: complex refractive index of layer 2 (for the given omega)
+    :param num_layers: number of (finite) layers in the stack
     :param n1_real0: real refractive index of layer 1 on resonance (sets width of layer 1)
     :param n2_real0: real refractive index of layer 2 on resonance (sets width of layer 2)
     :param n0: complex refractive index of "left" outer (infinite) region (for the given omega)
     :param nm: complex refractive index of "right" outer (infinite) region (for the given omega)
-    :param num_layers: number of (finite) layers in the stack
     :return: boost factor
     """
-    delta1 = _hw_delta(n1, n1_real0, omega, omega0)
-    delta2 = _hw_delta(n2, n2_real0, omega, omega0)
-    delta = _hw_alternate(delta1, delta2, num_layers)
-
-    n = _hw_alternate(n1, n2, num_layers + 2, n0, nm)
-    A = _A(n)
-    return boost(n, delta, A)
-
-
-def hw_boost(omega, omega0, n1, n2, num_layers, n1_real0=None, n2_real0=None, n0=1, nm=1):
-    """Boost factor for a half-wave stack with resonant frequency `omega0`.
-
-    :param omega: angular frequency, can be a 1D array
-    :param omega0: resonant angular frequency of the half-wave stack
-    :param n1: complex refractive index of layer 1, can be a function of omega or a constant
-    :param n2: complex refractive index of layer 2, can be a function of omega or a constant
-    :param num_layers: Number of (finite size) layers in the stack.
-    :param n1_real0: real refractive index of layer 1 on resonance (sets width of layer 1)
-    :param n2_real0: real refractive index of layer 2 on resonance (sets width of layer 2)
-    :param n0: complex refractive index of "left" outer (infinite) region, can be a function of omega or a constant
-    :param nm: complex refractive index of "right" outer (infinite) region, can be a function of omega or a constant
-    :return: boost factor
-    """
-    # turn n's into functions
-    if not callable(n1):
-        n1_ = n1
-        def n1(omega):
-            return n1_
-    if not callable(n2):
-        n2_ = n2
-        def n2(omega):
-            return n2_
-    if not callable(n0):
-        n0_ = n0
-        def n0(omega):
-            return n0_
-    if not callable(nm):
-        nm_ = nm
-        def nm(omega):
-            return nm_
-
+    # default `n1_real0` and `n2_real0`
     if not n1_real0:
-        n1_real0 = np.real(n1(omega0))
+        try:
+            n1_real0 = n1(omega0).real
+        except TypeError:
+            n1_real0 = n1.real
     if not n2_real0:
-        n2_real0 = np.real(n2(omega0))
+        try:
+            n2_real0 = n2(omega0).real
+        except TypeError:
+            n2_real0 = np.real(n2)
 
-    try:  # iterable omega
-        result = np.array([_hw_boost(
-            omega_, omega0, n1(omega_), n2(omega_), n1_real0, n2_real0, n0(omega), nm(omega), num_layers
-        ) for omega_ in omega])
+    # handle callable `n1` and `n2`
+    try:  # broadcastable
+        delta1 = _hw_delta(n1, n1_real0, omega, omega0)
+    except TypeError:  # `n1` should be a function
+        n1 = n1(omega)
+        delta1 = _hw_delta(n1, n1_real0, omega, omega0)
+    try:  # broadcastable
+        delta2 = _hw_delta(n2, n2_real0, omega, omega0)
+    except TypeError:  # `n2` should be a function
+        n2 = n2(omega)
+        delta2 = _hw_delta(n2, n2_real0, omega, omega0)
+    delta = _hw_alternate(delta1, delta2, num_layers)  # shape (x, `num_layers`)
+
+    # check for callable `n0` and `nm`
+    try:
+        n0 = n0(omega)
     except TypeError:
-        result = _hw_boost(omega, omega0, n1(omega), n2(omega), n1_real0, n2_real0, n0(omega), nm(omega), num_layers)
-    return result
+        pass
+    try:
+        nm = nm(omega)
+    except TypeError:
+        pass
+
+    n = _hw_alternate(n1, n2, num_layers + 2, n0, nm)  # shape (x, `num_layers` + 2)
+    A = _A(n)                                          # shape (x, `num_layers` + 2)
+    return boost(n, delta, A)
 
 
 def _hw_delta(n, n_real0, omega, omega0):
@@ -152,9 +147,11 @@ def _hw_alternate(value1, value2, total_num, value0=None, valuem=None):
     `value1`, `value2`, `value0`, and `valuem` can all have shape (x,), in which case the output will have shape
     (x, `total_num`).
     """
+    # create an empty array with the right shape
     value_shape = np.broadcast(value1, value2, value0, valuem).shape
     alternating_list = np.empty((total_num,) + value_shape, np.complex128)  # shape (`total_num`, x)
 
+    # fill the array
     if value0 is not None:
         value1, value2 = value2, value1
     alternating_list[::2] = value1
@@ -164,6 +161,7 @@ def _hw_alternate(value1, value2, total_num, value0=None, valuem=None):
     if value0 is not None:
         alternating_list[0] = value0
 
+    # adjust axis order
     alternating_list = np.moveaxis(alternating_list, 0, -1)                 # shape (x, `total_num`)
     return alternating_list
 
