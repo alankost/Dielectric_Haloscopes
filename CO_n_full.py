@@ -1,5 +1,5 @@
 import numpy as np
-from numpy import loadtxt
+from numpy import loadtxt, genfromtxt
 import matplotlib.pyplot as plt
 
 # load data from a file that contains three columns - transition energy in cm-1,
@@ -7,8 +7,9 @@ import matplotlib.pyplot as plt
 # and line width in cm^-1
 # data is for the C12-O16 isotope of CO which is 98.6544 % of total
 # data is also for T=296K 
-file = open('CO_data.csv')
-data = loadtxt(file,delimiter = ",")
+file = open('C:/Users/Alan/Dropbox/Home/Anson/2022/Dark Matter Project/Hitran/Data/CO_data_20JAN2022.txt')
+data = genfromtxt(file)
+
 lmbda=1e-2 # wavlength for 1 inverse cm
 c=2.998e8 # speed of light in m/sec
 hbar=1.05457e-34 # Plank constant
