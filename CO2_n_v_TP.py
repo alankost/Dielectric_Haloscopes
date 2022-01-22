@@ -1,10 +1,11 @@
 import numpy as np
 from numpy import genfromtxt
-import matplotlib.pyplot as plt 
+import matplotlib.pyplot as plt
+import os
 
-# load Hitran data from a file for the C12-O16
-# isotope of CO which is 98.6544 % of total
-file = open('CO2_data_20JAN2022.csv')
+# load Hitran data from a file for the C12-O16-2
+this_folder, _ = os.path.split(__file__)
+file = open(os.path.join(this_folder, 'data', 'CO2_data_20JAN2022.csv'))
 data = genfromtxt(file,delimiter=',')
 nu0_HT = data[:,0] # transition center frequencies
 S_HT = data[:,1] # integrated line strengths
@@ -14,7 +15,7 @@ delta_self_HT = data[:,4]
 elower_HT = data[:,5]
 
 # load data for partition function for the gas
-file2 = open('Partfun_12C16O2.txt')
+file2 = open(os.path.join(this_folder, 'data', 'Partfun_12C16O2.txt'))
 data2 = genfromtxt(file2)
 Q_HT = data2[:,1]
 
@@ -66,31 +67,36 @@ def nrealHT(omega,T,P):
                    (1+(nu-nu0[i])**2/gamma[i]**2)**-1))   
     return nreal
 
-# Range of eV & angular frequency over which to calculate alpha & nreal
-E_eV_range=np.linspace(0.28,0.30,10000)
-e=1.602e-19 # electronic charge
-hbar=1.05457e-34 # Plank constant
-omega_range=E_eV_range*e/hbar
-Tgas = 296 # Temperature of gas in degress Kelvin
-Pgas = 1 # Pressure of gas in atm (1 atm = 1.01325)
+def ncomplexHT(omega, T, P):
+    return nrealHT(omega, T, P) + 1j * nimagHT(omega, T, P)
 
-# molecular density in #/cm^-3 at 296K
-N0_HT=6.022e23/22.4/1000*273.15/296 # density of an ideal gas
 
-alpha_HT=alphaHT(omega_range,Tgas,Pgas)
-plt.plot(E_eV_range,alpha_HT)
-plt.xlabel('Energy (eV)')
-plt.ylabel('Absorption Coefficient ($cm^{-1})$')
-plt.show()
+if __name__ == '__main__':
+    # Range of eV & angular frequency over which to calculate alpha & nreal
+    E_eV_range=np.linspace(0.28,0.30,10000)
+    e=1.602e-19 # electronic charge
+    hbar=1.05457e-34 # Plank constant
+    omega_range=E_eV_range*e/hbar
+    Tgas = 296 # Temperature of gas in degress Kelvin
+    Pgas = 1 # Pressure of gas in atm (1 atm = 1.01325)
 
-nimag_HT=nimagHT(omega_range,Tgas,Pgas)
-plt.plot(E_eV_range,nimag_HT)
-plt.xlabel('Energy (eV)')
-plt.ylabel('Imag Part of Refractive Index')
-plt.show()
+    # molecular density in #/cm^-3 at 296K
+    N0_HT=6.022e23/22.4/1000*273.15/296 # density of an ideal gas
 
-nreal_HT=nrealHT(omega_range,Tgas,Pgas)
-plt.plot(E_eV_range,nreal_HT-1)
-plt.xlabel('Energy (eV)')
-plt.ylabel('Real Part of Refractive Index - 1')
-plt.show()
+    alpha_HT=alphaHT(omega_range,Tgas,Pgas)
+    plt.plot(E_eV_range,alpha_HT)
+    plt.xlabel('Energy (eV)')
+    plt.ylabel('Absorption Coefficient ($cm^{-1})$')
+    plt.show()
+
+    nimag_HT=nimagHT(omega_range,Tgas,Pgas)
+    plt.plot(E_eV_range,nimag_HT)
+    plt.xlabel('Energy (eV)')
+    plt.ylabel('Imag Part of Refractive Index')
+    plt.show()
+
+    nreal_HT=nrealHT(omega_range,Tgas,Pgas)
+    plt.plot(E_eV_range,nreal_HT-1)
+    plt.xlabel('Energy (eV)')
+    plt.ylabel('Real Part of Refractive Index - 1')
+    plt.show()
